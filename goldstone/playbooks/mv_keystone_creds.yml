@@ -1,0 +1,16 @@
+---
+- hosts: openstack
+  sudo: True
+  user: vagrant
+  gather_facts: no
+
+  tasks:
+
+  - name: copy mv_keystone_creds.sh files
+    copy: src=/home/vagrant/mv_keystone_creds.sh dest=/home/vagrant/ owner=vagrant group=vagrant mode=0777
+
+  - name: execute mv_keystone_creds.sh
+    command: sh /home/vagrant/mv_keystone_creds.sh
+
+
+   

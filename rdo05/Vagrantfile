@@ -1,0 +1,59 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
+
+VAGRANTFILE_API_VERSION = "2"
+BOX_NAME = 'russmckendrick/centos7'
+BOX_IP = '192.168.0.105'
+HOSTNAME = 'rdo05'
+DOMAIN   = 'vagrant.dev'
+Vagrant.require_version '>= 1.4.0'
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+
+config.vm.box = BOX_NAME
+
+config.vm.define :rdo05
+
+config.vm.network :private_network, ip: BOX_IP
+
+config.vm.host_name = HOSTNAME + '.' + DOMAIN
+
+config.vm.synced_folder "./", "/vagrant", id: "vagrant-root",
+    owner: "vagrant",
+    group: "nobody",
+    mount_options: ["dmode=777,fmode=755"]
+
+config.vm.provider "virtualbox" do |v|
+  v.memory = 2048
+  v.cpus = 1
+end
+
+config.vm.provider "vmware_fusion" do |v|
+  v.vmx["memsize"] = "4048"
+  v.vmx["numvcpus"] = "4"
+end
+
+$script = <<SCRIPT
+set -e
+set -x
+sudo systemctl stop NetworkManager
+sudo systemctl disable NetworkManager
+sudo systemctl enable network
+sudo yum install -y https://rdoproject.org/repos/rdo-release.rpm
+sudo yum install -y openstack-packstack
+INTERNALIP=$(ifconfig | grep "inet" | grep "10.0.2" | awk '{ print $2 }')
+EXTERNALIP=$(ifconfig | grep "inet" | grep "192.168" | awk '{ print $2 }')
+sudo /usr/bin/packstack --gen-answer-file=/tmp/answers
+sudo sed "s/$INTERNALIP/$EXTERNALIP/g" /tmp/answers > /tmp/answers-external
+sudo /usr/bin/packstack --answer-file=/tmp/answers-external
+echo ""
+echo "**** Logins ******"
+echo ""
+sudo cat /root/keystonerc_admin
+echo ""
+SCRIPT
+
+config.vm.provision "shell",
+    inline: $script
+
+end
